@@ -1,0 +1,17 @@
+{
+  "name": "purple-priklad",
+  "version": "1.0.0",
+  "description": "Priklad pre Purple tech",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Peter Siman",
+  "license": "ISC",
+  "dependencies": {
+    "hapi": "^10.0.0",
+    "joi": "^6.6.1",
+    "money": "^0.2.0",
+    "open-exchange-rates": "^0.3.0"
+  }
+}
