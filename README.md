@@ -16,3 +16,14 @@ node server.js
 ```
 http://localhost:3000
 ```
+
+## User login
+
+- john@test.com/secret (admin)
+- bob@test.com/secret (regular user)
+
+## Regenerate API DOC
+
+```
+apidoc -i . -f "server.js" -o apidoc/
+```
