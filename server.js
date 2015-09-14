@@ -16,34 +16,51 @@ var currencies = ["USD", "GBP", "CZK", "JPY", "EUR"];
 var server = new Hapi.Server();
 server.connection({ port: 3000 });
 
+//Users
+//john has user roles admin and user
+//bob only user
+//password for both users is 'secret'
 var users = {
-	john: {
-        username: 'john',
+	'john@test.com': {
+        username: 'john@test.com',
         password: '$2a$10$iqJSHD.BGr0E2IxQwYgJmeP3NvhPrXAeLSaGCj6IR/XU5QtjVu5Tm',   // 'secret'
         name: 'John Doe',
         id: '2133d32a',
 		roles: ['admin', 'user']
     },
-	bob: {
-        username: 'john',
+	'bob@test.com': {
+        username: 'bob@test.com',
         password: '$2a$10$iqJSHD.BGr0E2IxQwYgJmeP3NvhPrXAeLSaGCj6IR/XU5QtjVu5Tm',   // 'secret'
         name: 'Bob Doe',
         id: '2133d32b',
 		roles: ['user']
     }
-}
-
-var orders = {
-	
 };
 
-server.route({
-    method: 'GET',
-    path: '/',
-    handler: function (request, reply) {
-        reply('Hello, world!');
+//Orders 
+var orders = {
+    1: {
+        username: 'bob@test.com',
+        items: [1, 4, 5, 99],
+        createdAt: '2011-05-04'
+    },
+    2: {
+        username: 'bob@test.com',
+        items: [1, 4, 5, 99],
+        createdAt: '2012-05-21'
+    }, 
+    3: {
+        username: 'john@test.com',
+        items: [1, 3, 10, 54, 87],
+        createdAt: '2013-07-11'
+    },
+    4: {
+        username: 'xy@test.com',
+        items: [1, 4, 3],
+        createdAt: '2014-08-01'
     }
-});
+	
+};
 
 var validate = function (request, username, password, callback) {
 	server.log('debug', 'Validatin user ' + username);
@@ -57,7 +74,7 @@ var validate = function (request, username, password, callback) {
     });
 };
 
-var isAdmin = function(username){
+var isAdmin = function (username){
 	server.log('debug', 'Checking user ' + username);
 	var currentUser = users[username];
 	if (currentUser.roles.indexOf('admin') > -1){
@@ -66,24 +83,43 @@ var isAdmin = function(username){
 	return false;
 }
 
+/**
+ * @api {get} /orders Get user orders.
+ * @apiName GetOrders
+ * @apiGroup Orders
+ * @apiSuccess {String} username Username of user, who created the order
+ * @apiSuccess {Number[]} items IDs of products in the order
+ * @apiSuccess {String} createdAt Date of creation of the order
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+ *       "username": "john@test.com",
+ *       "items": [1,2,3],
+ *       "createdAt" : "2015-07-08"
+ *     }
+ */
 server.register(Basic, function (err) {
     server.auth.strategy('simple', 'basic', { validateFunc: validate });
     server.route({
         method: 'GET',
-        path: '/users',
+        path: '/orders',
         config: {
             auth: 'simple',
             handler: function (request, reply) {
 				var result = [];
 				if (isAdmin(request.auth.credentials.username)){
 					server.log('info', 'User is admin, returning all users info');
-					Object.keys(users).forEach(function(userKey){
-						result.push(users[userKey]);
+					Object.keys(orders).forEach(function(orderKey){
+						result.push(orders[orderKey]);
 					});
 					reply(result);
 				} else {
 					server.log('info', 'User is not admin. Showing just his information');
-					result.push(users[request.auth.credentials.username]);
+                    Object.keys(orders).forEach(function(orderKey){
+                        if (orders[orderKey].username == request.auth.credentials.username){
+                            result.push(orders[orderKey]);
+                        }
+                    });
 					reply(result);
 				}
             }
@@ -91,6 +127,21 @@ server.register(Basic, function (err) {
     });
 });
 
+/**
+ * @api {get} /exchange-rates/{baseCurrency} Get exchange rates
+ * @apiName GetExchangeRates
+ * @apiGroup ExchangeRates
+ * @apiSuccess {Double} exchangeRate Exchange rate according to currency code
+ * @apiExample {curl} Example usage:
+ *     curl -XGET http://localhost/exchange-rates/USD
+ * @apiSuccessExample Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+ *       "CZE": 1.15,
+ *       "GBP": 0.45
+ *     }
+ * @apiError {String} errorMessage Message with error description
+ */
 server.route({
     method: 'GET',
     path: '/exchange-rates/{baseCurrency}',
@@ -103,8 +154,8 @@ server.route({
 			console.log(validationResult);
 				
 			var rates = {};
+            //Get latest exchange rates
 			oxr.latest(function() {
-				// You can now use `oxr.rates`, `oxr.base` and `oxr.timestamp`
 				fx.rates = oxr.rates;
 				fx.base = oxr.base;
 				
@@ -120,9 +171,27 @@ server.route({
 				reply(result);
 			});
 		} else {
-			reply('Provide 3 character currency code. (GBP, USD, EUR, JPY, CZK).');
+			reply({"errorMessage" : "Provide 3 character currency code. (GBP, USD, EUR, JPY, CZK)."});
 		}
     }
+});
+
+server.register(require('inert'), function (err) {
+
+    if (err) {
+        throw err;
+    }
+
+    server.route({
+        method: 'GET',
+        path: '/{param*}',
+        handler: {
+            directory: {
+                path: 'apidoc'
+            }
+        }
+    });
+
 });
 
 server.register({
